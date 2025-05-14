@@ -1,4 +1,4 @@
-module gRPC
+module "github.com/finlleyl/gRPC"
 
 go 1.24
 
