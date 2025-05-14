@@ -1,0 +1,51 @@
+version: '3'
+
+vars:
+  PROTO_DIR: proto
+  OUT_DIR: gen/go
+
+tasks:
+  check-tools:
+    cmds:
+      - |
+        if ! command -v protoc-gen-go > /dev/null; then
+          echo "protoc-gen-go not found. Installing..."
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        fi
+      - |
+        if ! command -v protoc-gen-go-grpc > /dev/null; then
+          echo "protoc-gen-go-grpc not found. Installing..."
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        fi
+    silent: true
+
+  generate:
+    desc: Генерировать Go-код из всех proto-файлов (глубокий обход)
+    deps: [check-tools]
+    cmds:
+      - |
+        mkdir -p {{.OUT_DIR}}
+        find {{.PROTO_DIR}} -name '*.proto' | while read protofile; do
+          protoc \
+            -I {{.PROTO_DIR}} \
+            "$protofile" \
+            --go_out={{.OUT_DIR}} \
+            --go_opt=paths=source_relative \
+            --go-grpc_out={{.OUT_DIR}} \
+            --go-grpc_opt=paths=source_relative
+        done
+    sources:
+      - '{{.PROTO_DIR}}/**/*.proto'
+    generates:
+      - '{{.OUT_DIR}}/**/*.go'
+
+  clean:
+    desc: Удалить сгенерированные Go-файлы
+    cmds:
+      - rm -rf {{.OUT_DIR}}
+
+  install-plugins:
+    desc: Установить protoc-gen-go и protoc-gen-go-grpc вручную
+    cmds:
+      - go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+      - go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
