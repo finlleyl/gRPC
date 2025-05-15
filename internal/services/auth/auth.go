@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/finlleyl/gRPC/internal/domain/models"
+	"github.com/finlleyl/gRPC/internal/lib/jwt"
+	"github.com/finlleyl/gRPC/internal/storage"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"time"
@@ -60,4 +62,39 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 	}
 
 	return id, nil
+}
+
+func (a *Auth) Login(ctx context.Context, email string, password string, appID int) (string, error) {
+	a.log.Info("Logging in")
+
+	user, err := a.usrProvider.User(ctx, email)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			a.log.Warn("user not found")
+
+			return "", ErrInvalidCredentials
+		}
+
+		a.log.Errorw("failed to get user", "error", err, "email", email)
+		return "", fmt.Errorf("%s: %v", ErrInvalidCredentials, err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword(user.PassHash, []byte(password)); err != nil {
+		return "", fmt.Errorf("%s: %v", ErrInvalidCredentials, err)
+	}
+
+	app, err := a.appProvider.App(ctx, appID)
+	if err != nil {
+		return "", fmt.Errorf("%s: %v", ErrInvalidCredentials, err)
+	}
+
+	a.log.Info("Logged in", "email", email)
+
+	token, err := jwt.NewToken(user, app, a.tokenTTL)
+	if err != nil {
+		a.log.Errorw("failed to create token", "error", err, "email", email)
+		return "", fmt.Errorf("%s: %v", ErrInvalidCredentials, err)
+	}
+
+	return token, nil
 }
