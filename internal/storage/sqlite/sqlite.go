@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/finlleyl/gRPC/internal/domain/models"
 	"github.com/finlleyl/gRPC/internal/storage"
 	"github.com/mattn/go-sqlite3"
 
@@ -47,4 +48,25 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 	}
 
 	return id, nil
+}
+
+func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
+	stmt, err := s.db.Prepare("SELECT id, email, pass_hash FROM users WHERE email = ?")
+	if err != nil {
+		return models.User{}, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	row := stmt.QueryRowContext(ctx, email)
+
+	var user models.User
+	err := row.Scan(&user.ID, &user.Email, &user.PassHash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.User{}, fmt.Errorf("user not found: %w", storage.ErrUserNotFound)
+		}
+
+		return models.User{}, fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	return user, nil
 }
