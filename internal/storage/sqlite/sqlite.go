@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/finlleyl/gRPC/internal/storage"
 	"github.com/mattn/go-sqlite3"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -34,7 +35,7 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 		var sqliteErr sqlite3.Error
 
 		if errors.As(err, &sqliteErr) && errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique) {
-			return 0, fmt.Errorf("failed to insert user: %w", err)
+			return 0, fmt.Errorf("failed to insert user: %w", storage.ErrUserExists)
 		}
 
 		return 0, fmt.Errorf("failed to insert user: %w", err)
