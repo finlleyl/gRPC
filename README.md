@@ -254,5 +254,3 @@ CREATE TABLE IF NOT EXISTS apps (
 INSERT INTO apps(name, secret) VALUES ('my-frontend', 'super-secret-key');
 ```
 
----
-яется под лицензией **MIT**. Подробности см. в файле `LICENSE`.
