@@ -1,9 +1,13 @@
 package main
 
 import (
+	"github.com/finlleyl/gRPC/internal/app"
 	"github.com/finlleyl/gRPC/internal/config"
 	"github.com/finlleyl/gRPC/internal/logger"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -17,4 +21,15 @@ func main() {
 	defer zLog.Sync()
 
 	zLog.Infow("Logger initialized")
+
+	application := app.New(zLog, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
+	go func() { application.GRPCServer.MustRun() }()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	<-stop
+
+	application.GRPCServer.Stop()
+	zLog.Infow("Graceful shutdown complete")
 }
